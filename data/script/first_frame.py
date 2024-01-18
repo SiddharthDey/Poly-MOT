@@ -53,8 +53,11 @@ def extract_first_token(dataset_path, detector_path, dataset_name='NuScenes', da
 
 if __name__ == "__main__":
     extract_first_token(
-        dataset_path='/mnt/share/sda-8T/rj/Dateset/Nuscenes/data/nuscenes',
-        detector_path='../detector/raw_detector/infos_val_10sweeps_withvelo_filter_True.json',
+        # dataset_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-test',
+        dataset_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval',
+        # detector_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/detector_files/infos_test_10sweeps_withvelo.json',
+        detector_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/detector_files/infos_val_10sweeps_withvelo_filter_True.json',
         dataset_name='NuScenes',
+        # dataset_version='test'
         dataset_version='trainval'
     )

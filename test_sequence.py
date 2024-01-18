@@ -1,5 +1,7 @@
 import yaml, argparse, time, os, json, multiprocessing
 from dataloader.nusc_loader import NuScenesloader
+from dataloader.sequence_loader import nuScenes_sequence_loader
+
 from tracking.nusc_tracker import Tracker
 from tqdm import tqdm
 import pdb
@@ -23,8 +25,11 @@ parser.add_argument('--config_path', type=str, default='config/nusc_config.yaml'
 parser.add_argument('--detection_path', type=str, default='data/detector/val/val_centerpoint.json')
 # parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/test/nusc_first_token.json')
 parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/trainval/nusc_first_token.json')
-parser.add_argument('--result_path', type=str, default='result/' + localtime)
+# parser.add_argument('--result_path', type=str, default='result/' + localtime)
+parser.add_argument('--result_path', type=str, default='result/custom/json_dump')
 parser.add_argument('--eval_path', type=str, default='eval_result2/')
+parser.add_argument('--seq_index', type=int, default=0)
+args = parser.parse_args()
 
 
 def main(result_path, token, process, nusc_loader):
@@ -106,9 +111,11 @@ def eval(result_path, eval_path, nusc_path):
     nusc_eval = TrackingEval(
         config=cfg,
         result_path=result_path,
+        # eval_set="test",
         eval_set="val",
         output_dir=eval_path,
         verbose=True,
+        # nusc_version="v1.0-test",
         nusc_version="v1.0-trainval",
         nusc_dataroot=nusc_path,
     )
@@ -127,9 +134,9 @@ if __name__ == "__main__":
     print('writing config in folder: ' + os.path.abspath(args.eval_path))
 
     # load dataloader
-    nusc_loader = NuScenesloader(args.detection_path,
+    nusc_loader = nuScenes_sequence_loader(args.detection_path,
                                  args.first_token_path,
-                                 config)
+                                 config, args.seq_index)
     print('writing result in folder: ' + os.path.abspath(args.result_path))
 
     if args.process > 1:
@@ -153,4 +160,4 @@ if __name__ == "__main__":
         print('writing result in folder: ' + os.path.abspath(args.result_path))
 
     # eval result
-    eval(os.path.join(args.result_path, 'results.json'), args.eval_path, args.nusc_path)
+    # eval(os.path.join(args.result_path, 'results.json'), args.eval_path, args.nusc_path)
