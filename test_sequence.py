@@ -1,6 +1,7 @@
 import yaml, argparse, time, os, json, multiprocessing
 from dataloader.nusc_loader import NuScenesloader
-from dataloader.sequence_loader import nuScenes_sequence_loader
+from dataloader.sequence_loader import detector_sequence_loader_
+from dataloader.sequence_nusc_loader import nuScenes_sequence_loader
 
 from tracking.nusc_tracker import Tracker
 from tqdm import tqdm
@@ -11,24 +12,21 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--process', type=int, default=1)
 # paths
 localtime = ''.join(time.asctime(time.localtime(time.time())).split(' '))
-# parser.add_argument('--nusc_path', type=str, default='/mnt/share/sda-8T/rj/Dateset/Nuscenes/data/nuscenes')
-# parser.add_argument('--config_path', type=str, default='config/nusc_config.yaml')
-# parser.add_argument('--detection_path', type=str, default='data/detector/val/val_centerpoint.json')
-# parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/trainval/nusc_first_token.json')
-# parser.add_argument('--result_path', type=str, default='result/' + localtime)
-# parser.add_argument('--eval_path', type=str, default='eval_result2/')
 
 # parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-test')
-parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval')
+# parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval')
+parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/')
+parser.add_argument('--nusc_version', type=str, default='v1.0-trainval')
 parser.add_argument('--config_path', type=str, default='config/nusc_config.yaml')
 # parser.add_argument('--detection_path', type=str, default='data/detector/test/test_centerpoint.json')
 parser.add_argument('--detection_path', type=str, default='data/detector/val/val_centerpoint.json')
 # parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/test/nusc_first_token.json')
 parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/trainval/nusc_first_token.json')
 # parser.add_argument('--result_path', type=str, default='result/' + localtime)
-parser.add_argument('--result_path', type=str, default='result/custom/json_dump')
+parser.add_argument('--result_path', type=str, default='result/custom/')
 parser.add_argument('--eval_path', type=str, default='eval_result2/')
 parser.add_argument('--seq_index', type=int, default=0)
+parser.add_argument('--dataloader', type=str, default="nuscenes_loader") # nuscenes_loader, detector_loader
 args = parser.parse_args()
 
 
@@ -124,7 +122,8 @@ def eval(result_path, eval_path, nusc_path):
 
 
 if __name__ == "__main__":
-    os.makedirs(args.result_path, exist_ok=True)
+    final_result_path = os.path.join(args.result_path, args.dataloader, args.nusc_version, str(args.seq_index))
+    os.makedirs(final_result_path, exist_ok=True)
     os.makedirs(args.eval_path, exist_ok=True)
 
     # load and keep config
@@ -132,15 +131,22 @@ if __name__ == "__main__":
     valid_cfg = config
     json.dump(valid_cfg, open(args.eval_path + "/config.json", "w"))
     print('writing config in folder: ' + os.path.abspath(args.eval_path))
+    nusc_path = os.path.join(args.nusc_path, args.nusc_version)
 
     # load dataloader
-    nusc_loader = nuScenes_sequence_loader(args.detection_path,
-                                 args.first_token_path,
-                                 config, args.seq_index)
-    print('writing result in folder: ' + os.path.abspath(args.result_path))
+    if args.dataloader == "nuscenes_loader":
+        nusc_loader = nuScenes_sequence_loader(config, args.nusc_path, args.nusc_version, args.seq_index)
+    elif args.dataloader == "detector_loader":
+        nusc_loader = detector_sequence_loader_(args.detection_path,
+                                                args.first_token_path,
+                                                config, args.seq_index)
+    else:
+        exit("Invalid data source")
+
+    print('writing result in folder: ' + os.path.abspath(final_result_path))
 
     if args.process > 1:
-        result_temp_path = args.result_path + '/temp_result'
+        result_temp_path = final_result_path + '/temp_result'
         os.makedirs(result_temp_path, exist_ok=True)
         pool = multiprocessing.Pool(args.process)
         for token in range(args.process):
@@ -153,11 +159,11 @@ if __name__ == "__main__":
             result = json.load(open(os.path.join(result_temp_path, str(token) + '.json'), 'r'))
             results["results"].update(result["results"])
             results["meta"].update(result["meta"])
-        json.dump(results, open(args.result_path + '/results.json', "w"))
-        print('writing result in folder: ' + os.path.abspath(args.result_path))
+        json.dump(results, open(final_result_path + '/results.json', "w"))
+        print('writing result in folder: ' + os.path.abspath(final_result_path))
     else:
-        main(args.result_path, 0, 1, nusc_loader)
-        print('writing result in folder: ' + os.path.abspath(args.result_path))
+        main(final_result_path, 0, 1, nusc_loader)
+        print('writing result in folder: ' + os.path.abspath(final_result_path))
 
     # eval result
     # eval(os.path.join(args.result_path, 'results.json'), args.eval_path, args.nusc_path)

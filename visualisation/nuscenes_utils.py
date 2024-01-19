@@ -9,6 +9,7 @@ from nuscenes.utils.geometry_utils import box_in_image, BoxVisibility, view_poin
 import numpy as np
 from nuscenes.utils.data_classes import Box
 from nuscenes.nuscenes import NuScenes
+from vis_constants import POLYMOT_TO_NUSCENES_CATEGORY
 
 
 class NuscBox_custom(Box):
@@ -183,7 +184,7 @@ def render_sample_data_custom(sample_data_token: str,
         # Show boxes.
         if with_anns:
             for box in boxes:
-                c = np.array(nusc.explorer.get_color(box.name)) / 255.0
+                c = np.array(nusc.explorer.get_color(POLYMOT_TO_NUSCENES_CATEGORY[box.name])) / 255.0
                 # c = np.array((255, 158, 0))/255.0
                 box.render(ax, view=camera_intrinsic, normalize=True, colors=(c, c, c))
 

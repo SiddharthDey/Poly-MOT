@@ -9,35 +9,55 @@ import numpy as np
 from utils.io import load_file
 from data.script.NUSC_CONSTANT import *
 from pre_processing import dictdet2array, arraydet2box, blend_nms
-
+from nuscenes.nuscenes import NuScenes
+from data.script.NUSC_CONSTANT import NUSCENES_TO_POLYMOT_CATEGORY
 
 class nuScenes_sequence_loader:
-    def __init__(self, detection_path, first_token_path, config, sequence_index=0, dataset_version='mini'):
+    def __init__(self, config, dataroot, dataset_version='v1.0-mini',  sequence_index=0):
         """
-        :param detection_path: path of order detection file
-        :param first_token_path: path of first frame token for each seq
         :param config: dict, hyperparameter setting
         """
-        # detector -> {sample_token:[{det1_info}, {det2_info}], ...}， check the detailed "det_info" at nuscenes.org
-        self.detector = load_file(detection_path)["results"]
-        self.all_sample_token = list(self.detector.keys())
-        self.seq_first_token = load_file(first_token_path)
 
-        if sequence_index < 0 or sequence_index >= len(self.seq_first_token):
-            raise ValueError(f"sequence_index {sequence_index} is out of range")
+        def get_scene_annotations_nuscenes(scene_index, nusc):
+            my_scene = nusc.scene[scene_index]
+            first_sample_token = my_scene['first_sample_token']
+
+            current_sample_token = first_sample_token
+            result_dict = {}
+            scene_sample_tokens = []
+
+            while True:
+                scene_sample_tokens.append(current_sample_token)
+                current_sample = nusc.get('sample', current_sample_token)
+                annotations = current_sample['anns']
+
+                sample_annotations = []
+                for annotation_token in annotations:
+                    annotation_metadata = nusc.get('sample_annotation', annotation_token)
+                    if annotation_metadata['category_name'] not in NUSCENES_TO_POLYMOT_CATEGORY:
+                        continue
+                    # annotation_metadata["tracking_id"] = 1
+                    annotation_metadata["detection_score"] = 1.0
+                    annotation_metadata["velocity"] = [0.0, 0.0]
+                    annotation_metadata["detection_name"] = NUSCENES_TO_POLYMOT_CATEGORY[annotation_metadata["category_name"]]
+                    sample_annotations.append(annotation_metadata)
+                result_dict[current_sample_token] = sample_annotations
+                
+                next_sample_token = current_sample['next']
+                if next_sample_token == '':
+                    break
+                current_sample_token = next_sample_token
+
+            return result_dict, scene_sample_tokens
         
-        sequence_samples_token = []
-        sequence_first_sample_token = self.seq_first_token[sequence_index]
-        sequence_samples_token.append(sequence_first_sample_token)
+        nusc = NuScenes(version=dataset_version, dataroot=dataroot + dataset_version, verbose=True)
+        print("Using NuScenes dataset version: ", dataset_version)
 
-        sequence_first_sample_token_index = self.all_sample_token.index(sequence_first_sample_token)
-        current_index = sequence_first_sample_token_index + 1
-        current_sample_token = self.all_sample_token[current_index]
-        while current_sample_token not in self.seq_first_token:
-            sequence_samples_token.append(current_sample_token)
-            current_index += 1
-            current_sample_token = self.all_sample_token[current_index]
-        self.sequence_samples_token = sequence_samples_token
+        if sequence_index < 0 or sequence_index >= len(nusc.scene):
+            raise ValueError(f"sequence_index {sequence_index} is out of range")
+
+        self.result_dict, self.sequence_samples_token = get_scene_annotations_nuscenes(sequence_index, nusc)
+        del nusc
         
         self.config, self.data_info = config, {}
         self.SF_thre, self.NMS_thre = config['preprocessing']['SF_thre'], config['preprocessing']['NMS_thre']
@@ -62,10 +82,11 @@ class nuScenes_sequence_loader:
         """
         # curr_token = self.all_sample_token[item]
         curr_token = self.sequence_samples_token[item]
-        ori_dets = self.detector[curr_token]
+        ori_dets = self.result_dict[curr_token]
 
         # assign seq and frame id
-        if curr_token in self.seq_first_token:
+        # if curr_token in self.seq_first_token:
+        if item == 0:
             self.seq_id += 1
             self.frame_id = 1
         else: self.frame_id += 1
@@ -96,12 +117,13 @@ class nuScenes_sequence_loader:
 
         # Available information for the current frame
         data_info = {
-            'is_first_frame': curr_token in self.seq_first_token,
+            'is_first_frame': item == 0,
             'timestamp': item,
             'sample_token': curr_token,
             'seq_id': self.seq_id,
             'frame_id': self.frame_id,
-            'has_velo': self.config['basic']['has_velo'],
+            # 'has_velo': self.config['basic']['has_velo'],
+            'has_velo': False,
             'np_dets': np_dets[keep] if keep_num != 0 else np.zeros(0),
             'np_dets_bottom_corners': np_dets_bottom_corners[keep] if keep_num != 0 else np.zeros(0),
             'box_dets': box_dets[keep] if keep_num != 0 else np.zeros(0),
@@ -111,4 +133,4 @@ class nuScenes_sequence_loader:
         return data_info
 
     def __len__(self) -> int:
-        return len(self.all_sample_token)
+        return len(self.sequence_samples_token)

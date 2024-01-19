@@ -7,6 +7,7 @@ import numpy as np
 
 from nuscenes_utils import render_sample_data_custom
 
+
 def scene_samples_render(scene_sample_tokens: List[str], result_dict: dict, nusc: NuScenes, images_folder: str):
     """
     Render all the sample data in a scene

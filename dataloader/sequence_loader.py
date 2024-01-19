@@ -11,7 +11,7 @@ from data.script.NUSC_CONSTANT import *
 from pre_processing import dictdet2array, arraydet2box, blend_nms
 
 
-class nuScenes_sequence_loader:
+class detector_sequence_loader_:
     def __init__(self, detection_path, first_token_path, config, sequence_index=0):
         """
         :param detection_path: path of order detection file
@@ -111,4 +111,4 @@ class nuScenes_sequence_loader:
         return data_info
 
     def __len__(self) -> int:
-        return len(self.all_sample_token)
+        return len(self.sequence_samples_token)
