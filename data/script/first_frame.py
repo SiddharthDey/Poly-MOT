@@ -8,6 +8,9 @@ sys.path.append('../..')
 from utils.io import load_file
 from tqdm import tqdm
 from nuscenes.nuscenes import NuScenes
+import yaml
+import argparse
+
 
 FIRST_TOKEN_ROOT_PATH = '../utils/first_token_table/'
 
@@ -52,12 +55,18 @@ def extract_first_token(dataset_path, detector_path, dataset_name='NuScenes', da
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_file", type=str, default='data_config.yaml')
+    args = parser.parse_args()
+
+
+    config_file = args.config_file
+    with open(config_file, 'r') as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+
     extract_first_token(
-        # dataset_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-test',
-        dataset_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval',
-        # detector_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/detector_files/infos_test_10sweeps_withvelo.json',
-        detector_path='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/detector_files/infos_val_10sweeps_withvelo_filter_True.json',
-        dataset_name='NuScenes',
-        # dataset_version='test'
-        dataset_version='trainval'
+        dataset_path=config['dataset_path'],
+        detector_path=config['detector_path'],
+        dataset_name=config['dataset_name'],
+        dataset_version=config['dataset_version']
     )

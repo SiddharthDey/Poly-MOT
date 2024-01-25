@@ -1,3 +1,21 @@
+# config for using detector json
+detection_path: data/detector/val/val_centerpoint.json
+first_token_path: data/utils/first_token_table/trainval/nusc_first_token.json
+process: 1
+full_result_path: result/full/check1/
+
+# common parameters
+nusc_version: v1.0-mini
+
+nusc_path: /media/toji-fushiguro/HDD/data_avl/nuScenes/data/nuScenes/
+result_path: result/custom/
+eval_path: eval_result2/
+use_result_time: True
+
+# config w/o using detector json
+seq_index: 0
+dataloader: nuscenes_loader # nuscenes_loader, detector_loader
+
 basic:
   split: 'val'         # dataset split, val/test
   has_velo: True       # whether detector has velo info

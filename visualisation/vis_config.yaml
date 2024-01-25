@@ -1,0 +1,7 @@
+use_result_json: True
+scene_index: 0
+FPS: 1
+nuSences_version: v1.0-mini # v1.0-mini, v1.0-trainval, v1.0-test
+dataloader_type: nuscenes_loader # nuscenes_loader, detector_loader
+results_root: ../result/custom/
+data_root: /media/toji-fushiguro/HDD/data_avl/nuScenes/data/nuScenes/

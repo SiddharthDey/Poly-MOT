@@ -4,27 +4,20 @@ from tracking.nusc_tracker import Tracker
 from tqdm import tqdm
 import pdb
 
-parser = argparse.ArgumentParser()
-# running configurations
-parser.add_argument('--process', type=int, default=1)
-# paths
-localtime = ''.join(time.asctime(time.localtime(time.time())).split(' '))
-# parser.add_argument('--nusc_path', type=str, default='/mnt/share/sda-8T/rj/Dateset/Nuscenes/data/nuscenes')
+# parser = argparse.ArgumentParser()
+# # running configurations
+# parser.add_argument('--process', type=int, default=1)
+# # paths
+
+# # parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-test')
+# parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval')
 # parser.add_argument('--config_path', type=str, default='config/nusc_config.yaml')
+# # parser.add_argument('--detection_path', type=str, default='data/detector/test/test_centerpoint.json')
 # parser.add_argument('--detection_path', type=str, default='data/detector/val/val_centerpoint.json')
+# # parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/test/nusc_first_token.json')
 # parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/trainval/nusc_first_token.json')
 # parser.add_argument('--result_path', type=str, default='result/' + localtime)
 # parser.add_argument('--eval_path', type=str, default='eval_result2/')
-
-# parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-test')
-parser.add_argument('--nusc_path', type=str, default='/home/captainlevi/Documents/UCSD_lab_project/AVL/data/nuScenes_dataset/nuScenes/v1.0-trainval')
-parser.add_argument('--config_path', type=str, default='config/nusc_config.yaml')
-# parser.add_argument('--detection_path', type=str, default='data/detector/test/test_centerpoint.json')
-parser.add_argument('--detection_path', type=str, default='data/detector/val/val_centerpoint.json')
-# parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/test/nusc_first_token.json')
-parser.add_argument('--first_token_path', type=str, default='data/utils/first_token_table/trainval/nusc_first_token.json')
-parser.add_argument('--result_path', type=str, default='result/' + localtime)
-parser.add_argument('--eval_path', type=str, default='eval_result2/')
 
 
 def main(result_path, token, process, nusc_loader):
@@ -117,40 +110,56 @@ def eval(result_path, eval_path, nusc_path):
 
 
 if __name__ == "__main__":
-    os.makedirs(args.result_path, exist_ok=True)
-    os.makedirs(args.eval_path, exist_ok=True)
+    localtime = ''.join(time.asctime(time.localtime(time.time())).split(' '))
+    result_path_time = 'result/' + localtime
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_file", type=str, default='config/nusc_config.yaml')
+    args = parser.parse_args()
+
+
+    config_file = args.config_file
+    with open(config_file, 'r') as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+
+    if config["use_result_time"]:
+        final_result_path = result_path_time
+    else:
+        final_result_path = os.path.join(config["full_result_path"])
+
+    os.makedirs(final_result_path, exist_ok=True)
+    os.makedirs(config["eval_path"], exist_ok=True)
 
     # load and keep config
-    config = yaml.load(open(args.config_path, 'r'), Loader=yaml.Loader)
     valid_cfg = config
-    json.dump(valid_cfg, open(args.eval_path + "/config.json", "w"))
-    print('writing config in folder: ' + os.path.abspath(args.eval_path))
+    json.dump(valid_cfg, open(config["eval_path"] + "/config.json", "w"))
+    print('writing config in folder: ' + os.path.abspath(config["eval_path"]))
 
     # load dataloader
-    nusc_loader = NuScenesloader(args.detection_path,
-                                 args.first_token_path,
+    nusc_loader = NuScenesloader(config["detection_path"],
+                                 config["first_token_path"],
                                  config)
-    print('writing result in folder: ' + os.path.abspath(args.result_path))
+    print('writing result in folder: ' + os.path.abspath(final_result_path))
 
-    if args.process > 1:
-        result_temp_path = args.result_path + '/temp_result'
+    if config["process"] > 1:
+        result_temp_path = final_result_path + '/temp_result'
         os.makedirs(result_temp_path, exist_ok=True)
-        pool = multiprocessing.Pool(args.process)
-        for token in range(args.process):
-            pool.apply_async(main, args=(result_temp_path, token, args.process, nusc_loader))
+        pool = multiprocessing.Pool(config["process"])
+        for token in range(config["process"]):
+            pool.apply_async(main, config=(result_temp_path, token, config["process"], nusc_loader))
         pool.close()
         pool.join()
         results = {'results': {}, 'meta': {}}
         # combine the results of each process
-        for token in range(args.process):
+        for token in range(config["process"]):
             result = json.load(open(os.path.join(result_temp_path, str(token) + '.json'), 'r'))
             results["results"].update(result["results"])
             results["meta"].update(result["meta"])
-        json.dump(results, open(args.result_path + '/results.json', "w"))
-        print('writing result in folder: ' + os.path.abspath(args.result_path))
+        json.dump(results, open(final_result_path + '/results.json', "w"))
+        print('writing result in folder: ' + os.path.abspath(final_result_path))
     else:
-        main(args.result_path, 0, 1, nusc_loader)
-        print('writing result in folder: ' + os.path.abspath(args.result_path))
+        main(final_result_path, 0, 1, nusc_loader)
+        print('writing result in folder: ' + os.path.abspath(final_result_path))
 
     # eval result
-    eval(os.path.join(args.result_path, 'results.json'), args.eval_path, args.nusc_path)
+    eval(os.path.join(final_result_path, 'results.json'), config["eval_path"], config["nusc_path"])

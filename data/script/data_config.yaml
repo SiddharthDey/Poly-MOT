@@ -1,0 +1,6 @@
+dataset_path: /media/toji-fushiguro/HDD/data_avl/nuScenes/data/nuScenes/v1.0-trainval
+detector_path: /media/toji-fushiguro/HDD/data_avl/nuScenes/data/detector_files/infos_val_10sweeps_withvelo_filter_True.json
+
+dataset_name: NuScenes
+dataset_version: trainval # trainval, test
+detector_name: centerpoint
